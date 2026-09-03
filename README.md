@@ -2,6 +2,10 @@
 
 **[English](README_EN.md) | Русский**
 
+[![release](https://img.shields.io/github/v/release/WooonderkinG33/mcdownloader-go)](https://github.com/WooonderkinG33/mcdownloader-go/releases)
+[![go](https://img.shields.io/badge/go-1.22+-blue)](https://go.dev)
+[![license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+
 Библиотека на Go: указанная версия Minecraft → готовые файлы в указанной папке. Без UI, только кодовый API. `MIT`.
 
 Берёт `Mojang piston-meta` (+ `Fabric`/`Quilt` meta), качает `client.jar`, `libraries`, `assets`, `natives`, проверяет `sha1`, складывает плоско в переданную папку. Запуск, `classpath`, поиск `Java` и процесс — дело потребителя.

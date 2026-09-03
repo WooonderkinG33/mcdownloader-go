@@ -2,6 +2,10 @@
 
 **[Русский](README.md) | English**
 
+[![release](https://img.shields.io/github/v/release/WooonderkinG33/mcdownloader-go)](https://github.com/WooonderkinG33/mcdownloader-go/releases)
+[![go](https://img.shields.io/badge/go-1.22+-blue)](https://go.dev)
+[![license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+
 A Go library: given Minecraft version → ready files in a given folder. Code API only, no UI. `MIT`.
 
 Takes `Mojang piston-meta` (+ `Fabric`/`Quilt` meta), downloads `client.jar`, `libraries`, `assets`, `natives`, verifies `sha1`, lays everything flat into the target folder. Launching, `classpath`, Java discovery and the process are the consumer's job.
