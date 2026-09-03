@@ -312,6 +312,14 @@ cmd.Run()
 | Mojang Gamma | ✅ OK | 17.0.15 (Microsoft build) | 96 MB |
 | Mojang Epsilon | ✅ OK | 25.0.1 | 111 MB |
 
+### Platforms
+
+| OS | Status |
+|----|--------|
+| **Linux** | ✅ Tested: the whole version/loader matrix |
+| **Windows** | 🟡 Code + cross-compile OK, not run live |
+| **macOS** | 🟡 Code + cross-compile OK, not run live |
+
 ### Additional
 
 - **Loader version switch** (fabric 0.16.14 → 0.15.11 and back): 3 seconds, no client re-download
@@ -327,6 +335,8 @@ cmd.Run()
 | Linux | `~/.minecraft/...` | `:` separator | `.so` | `/usr/lib/jvm/...` |
 | Windows | `%APPDATA%\.minecraft\...` | `;` separator | `.dll` | Registry, `JAVA_HOME` |
 | macOS | `~/Library/Application Support/minecraft/...` | `:` separator | `.dylib` | `/Library/Java/JavaVirtualMachines/...` |
+
+> **Platform status, honestly:** only **Linux** was tested live (the whole matrix above). The **Windows** and **macOS** branches are written (paths, natives, JRE `mac-os`/`mac-os-arm64`, classpath separators) and **pass cross-compilation** (`GOOS=windows/amd64`, `GOOS=darwin/arm64` — OK), but have **not been run** on real Windows/macOS — waiting for a test or PR from those OS users.
 
 ---
 
