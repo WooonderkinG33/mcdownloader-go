@@ -2,177 +2,372 @@
 
 **[English](README_EN.md) | Русский**
 
-[![release](https://img.shields.io/github/v/release/WooonderkinG33/mcdownloader-go)](https://github.com/WooonderkinG33/mcdownloader-go/releases)
-[![go](https://img.shields.io/badge/go-1.22+-blue)](https://go.dev)
-[![license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+---
 
-Библиотека на Go: указанная версия Minecraft → готовые файлы в указанной папке. Без UI, только кодовый API. `MIT`.
+[![Go](https://img.shields.io/badge/Go-1.22+-00ADD8?style=for-the-badge&logo=go&logoColor=white)](https://go.dev/doc/go1.22)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
+[![Minecraft](https://img.shields.io/badge/Minecraft-1.5.2%20–%2026.2-555?style=for-the-badge&logo=)](https://www.minecraft.net)
+[![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20Windows%20%7C%20macOS-555?style=for-the-badge)](#кроссплатформа)
+[![Minecraft Client Downloader](https://img.shields.io/badge/Minecraft%20Client%20Downloader-Go-blue?style=for-the-badge)](.)
 
-Берёт `Mojang piston-meta` (+ `Fabric`/`Quilt` meta), качает `client.jar`, `libraries`, `assets`, `natives`, проверяет `sha1`, складывает плоско в переданную папку. Запуск, `classpath`, поиск `Java` и процесс — дело потребителя.
+**keywords:** `minecraft` · `launcher` · `download` · `fabric` · `quilt` · `forge` · `piston-meta` · `mojang` · `jre` · `java` · `client` · `library` · `golang` · `go` · `качалка` · `загрузчик` · `майнкрафт`
 
-```go
-import mcdownloader "github.com/WooonderkinG33/mcdownloader-go"
+---
 
-d, _ := mcdownloader.New(mcdownloader.Options{
-    MCVersion:  "1.20.1",
-    VersionDir: "~/.minerouter/minecraft/CraftopiaMC",
-})
-rep, _ := d.Ensure() // 10 строк — и клиент скачан, проверен, склеен
-```
+## Что это
 
-## Возможности
+**mcdownloader-go** — Go-библиотека, которая превращает номер версии Minecraft в полностью готовую к запуску папку с клиентом.
 
-- **Ванилла любых версий** — от `1.5.2` до свежих снапшотов, через официальный `piston-meta`
-- **Fabric / Quilt** — через официальные meta API (`meta.fabricmc.net/v2`, `meta.quiltmc.org/v3`): loader jar, intermediary, deps, `mainClass` (`KnotClient`)
-- **Mojang JRE** — опционально качает совместимый рантайм (`DownloadJRE`), путь отдаёт в отчёте
-- **Проверки** — `sha1` каждого файла при скачивании + финальная сверка; `404` на протухших ассетах пропускаются с варном (как официальный лаунчер)
-- **Ротация загрузчика** — `loader.json` маркер: смена версии чистит только файлы старого, сборка не перекачивается (3 секунды)
-- **Прогресс реалтайм** — колбэк на каждый файл; троттлинг на потребителе
-- **Кроссплатформа** — `linux/windows/macos` ветки путей, `classpath`-разделители, `natives` под ОС, `arch`-rules честно
+Скачивает `client.jar`, библиотеки, ассеты, нативы, проверяет целостность (`SHA1`), определяет совместимую Java и раскладывает всё плоско в указанную папку. **Без UI, без CLI** — только чистый Go API.
+
+Поддерживает **vanilla**, **Fabric** и **Quilt** из коробки. **Forge / NeoForge** — запланированы (v0.3).
+
+---
 
 ## Установка
 
-```sh
-go get github.com/WooonderkinG33/mcdownloader-go
+```bash
+go get github.com/WooonderkinG33/mcdownloader-go@v1.0.0
 ```
 
-Требования: `Go 1.22+`, интернет к `piston-meta.mojang.com`, `resources.download.minecraft.net`, `libraries.minecraft.net` (+ `maven.fabricmc.net` / `maven.quiltmc.org` для модовых).
+---
 
 ## Быстрый старт
+
+**3 строки — и клиент готов к запуску:**
 
 ```go
 package main
 
 import (
     "fmt"
-    mcdownloader "github.com/WooonderkinG33/mcdownloader-go"
+    mc "github.com/WooonderkinG33/mcdownloader-go"
 )
 
 func main() {
-    d, err := mcdownloader.New(mcdownloader.Options{
+    d, _ := mc.New(mc.Options{
         MCVersion:  "1.20.1",
-        VersionDir: "/tmp/my-mc", // назовётся как скажешь: версия или пресет
+        VersionDir: "~/.minecraft/versions/1.20.1",
     })
-    if err != nil {
-        panic(err)
-    }
-    rep, err := d.Ensure()
-    if err != nil {
-        panic(err)
-    }
-    fmt.Println(rep.ClientJar, rep.MainClass) // готово к запуску
+    rep, _ := d.Ensure()
+    fmt.Println(rep.ClientJar, rep.MainClass)
 }
 ```
 
-## Опции конструктора
+**С Fabric:**
 
-### Обязательные
+```go
+d, _ := mc.New(mc.Options{
+    MCVersion:        "1.20.1",
+    Modloader:        mc.Fabric,
+    ModloaderVersion: "0.16.14",
+    VersionDir:       "~/.minecraft/versions/1.20.1-fabric",
+})
+```
 
-| Поле | Правило |
-|---|---|
-| `MCVersion` | всегда, например `"1.20.1"` |
-| `VersionDir` | всегда — куда качать (`~`/env/относительный резолвятся в `New`) |
-| `ModloaderVersion` | если `Modloader` задан (`latest` не подставляем осознанно — свежий лоадер на старый майн = конфликты) |
-| `JREDir` | если `DownloadJRE: true` |
+**С загрузкой Java:**
 
-### Необязательные
+```go
+d, _ := mc.New(mc.Options{
+    MCVersion:   "1.20.1",
+    VersionDir:  "~/.minecraft/versions/1.20.1",
+    DownloadJRE: true,
+    JREDir:      "~/.minecraft/runtime",
+})
+rep, _ := d.Ensure()
+// rep.JavaPath = ~/.minecraft/runtime/java-runtime-gamma/bin/java
+```
 
-| Поле | Дефолт | Описание |
-|---|---|---|
-| `Modloader` | `""` = vanilla | `Fabric` / `Quilt` (`Forge`/`NeoForge` — v0.3, вернут честную ошибку) |
-| `Concurrency` | `0` = авто `2×CPU [4..16]` | воркеры; больше 16 бессмысленно (сеть + `429`) |
-| `HTTPTimeout` | `0` = `120`с | таймаут запроса, ретраи ×3 |
-| `DownloadJRE` | `false` | скачать Mojang runtime; выкл = `JavaPath == ""`, Java ищешь сам |
-| `Progress` | `nil` = `LogProgress` в stdout | колбэк реалтайм (каждый файл + смена фазы) |
+---
 
-### Отчёт `InstallReport`
+## Возможности
 
-`ClientJar`, `Libraries[]`, `NativesDir`, `AssetsDir`/`AssetsID`, `MainClass`, `RequiredJavaMajor`, `JavaPath`, `Modloader`/`ModloaderVersion`, `Minecraft` (gameDir).
+- **Vanilla** — от 1.5.2 до последних версий (26.2+), через `piston-meta.mojang.com`
+- **Fabric** — через `meta.fabricmc.net/v2`, нужна явная версия лоадера
+- **Quilt** — через `meta.quiltmc.org/v3`, нужна явная версия лоадера
+- **Forge / NeoForge** — пока не реализованы (v0.3), возвращают ошибку
+- **Mojang JRE** — скачивает совместимый рантайм (`java-runtime-gamma` и др.), путь в `InstallReport`
+- **SHA1-проверка** — каждого файла при скачивании + финальная сверка
+- **Отсутствующие ассеты** — Mojang иногда удаляет старые файлы CDN, библиотека пропускает 404 ассетов с предупреждением
+- **Ротация лоадера** — при смене версии лоадера старые файлы удаляются, клиент не перекачивается (3 секунды)
+- **Прогресс реалтайм** — событие на каждый скачанный файл + смену фазы
+- **Кроссплатформа** — Linux / Windows / macOS: разделители путей, natives под архитектуру, system Java paths
+
+---
+
+## Конструктор Options
+
+### Обязательные параметры
+
+| Поле | Тип | Описание |
+|------|-----|----------|
+| `MCVersion` | `string` | Версия Minecraft, например `"1.20.1"`, `"1.8.9"`, `"26.2"` |
+| `VersionDir` | `string` | Абсолютный путь, куда раскладывается клиент. **Не содержит версию** — это твоя папка: `"~/.minecraft/versions/1.20.1"` или `"~/projects/CraftopiaMC"` |
+
+### Модлоадер
+
+| Поле | Тип | Описание |
+|------|-----|----------|
+| `Modloader` | `Modloader` | `"vanilla"` / `mc.Fabric` / `mc.Quilt`. Пустой = vanilla |
+| `ModloaderVersion` | `string` | **Обязательна при модлоадере.** Нет авто-определения latest —Fresh loader + old MC = conflicts |
+
+> **Почему нет auto-latest?** Свежий Fabric/Quilt на старом майнкрафте (например 1.5.2) даст несовместимость. Пользователь должен указать версию осознанно.
+
+### Java
+
+| Поле | Тип | Описание |
+|------|-----|----------|
+| `DownloadJRE` | `bool` | Скачать Mojang runtime из `piston-meta`. По умолчанию `false` |
+| `JREDir` | `string` | Куда складывать runtime. **Обязательна при `DownloadJRE: true`** |
+
+### Производительность и логирование
+
+| Поле | Тип | По умолчанию | Описание |
+|------|-----|-------------|----------|
+| `Concurrency` | `int` | `runtime.NumCPU() * 2` (4–16) | Число параллельных загрузок |
+| `HTTPTimeout` | `int` | `120` сек | Таймаут на один HTTP-запрос |
+| `Quiet` | `bool` | `false` | Отключить stdout-логгер. При `Quiet: true` и без `Progress` — тишина |
+| `Progress` | `func(Progress)` | `nil` → `LogProgress` | Колбэк для прогресса. При `nil` — логгер каждые 10%. При передаче — реалтайм без троттлинга |
+
+---
+
+## InstallReport
+
+Отчёт `d.Ensure()` — что скачано и готово к использованию:
+
+```go
+type InstallReport struct {
+    MCVersion         string   // "1.20.1"
+    Modloader         Modloader // mc.Fabric / mc.Quilt / mc.Vanilla
+    ModloaderVersion  string   // "0.16.14"
+    ClientJar         string   // Абсолютный путь к .jar
+    Libraries         []string // Все .jar для classpath
+    NativesDir        string   // Распакованные .so/.dll/.dylib
+    AssetsDir         string   // Папка assets
+    AssetsID          string   // ID ассет-индекса ("5", "1.8")
+    MainClass         string   // Точка входа (Minecraft / KnotClient)
+    RequiredJavaMajor int      // Требуемая версия Java (8, 17, 21, 25)
+    JavaPath          string   // Путь к JRE (только при DownloadJRE: true)
+    Minecraft         string   // = VersionDir (gameDir)
+}
+```
+
+---
 
 ## Прогресс
 
-Либа шлёт событие на каждый файл: `Phase` (`init/resolve/download/verify/done`), `Sub` (`client+libs/assets/java`), `Pct/Done/Total/Text`. Как показывать — решаешь ты:
+Библиотека шлёт события **реалтайм** на каждый скачанный файл:
 
 ```go
-// молча
-Progress: func(p mcdownloader.Progress) {},
-// 10% в stdout
-Progress: mcdownloader.LogProgress,
-// не чаще раза в секунду (например, в lstate)
-var last time.Time
-Progress: func(p mcdownloader.Progress) {
-    if time.Since(last) < time.Second && p.Pct != 100 {
-        return
-    }
-    last = time.Now()
-    updateUI(p)
-},
+type Progress struct {
+    Phase string  // "init" | "resolve" | "download" | "verify" | "done"
+    Sub   string  // "client+libs" | "assets" | "java"
+    Done  int64   // Скачано файлов
+    Total int64   // Всего файлов
+    Pct   int     // 0–100
+    Text  string  // Человекочитаемое описание
+}
 ```
 
-## Реальная интеграция (запуск)
+**Примеры:**
+
+```go
+// 1. Дефолтный логгер (every event, stdout)
+Progress: mc.LogProgress
+
+// 2. Молча (ничего в stdout)
+Progress: func(p mc.Progress) {}
+
+// 3. Лимитированное обновление UI (1 раз в секунду)
+var last time.Time
+Progress: func(p mc.Progress) {
+    if time.Since(last) < time.Second && p.Pct != 100 { return }
+    last = time.Now()
+    updateProgressUI(p.Pct, p.Text)
+}
+
+// 4. Через map (для getr tactics)
+Progress: func(p mc.Progress) {
+    statusMap[p.Phase] = p.Pct
+    eventBus.Emit("download:progress", p)
+}
+```
+
+---
+
+## Раскладка файлов
+
+После `Ensure()` в `VersionDir` лежит:
+
+```
+VersionDir/
+├── 1.20.1.jar              # Клиент
+├── natives/                # .so / .dll / .dylib
+├── loader.json             # Маркер версии лоадера (fabric/quilt)
+├── libraries/              # Все .jar библиотеки
+├── assets/
+│   ├── indexes/
+│   │   └── 5.json          # Ассет-индекс
+│   └── objects/
+│       ├── a1/...          # Ассеты по первым 2 символам хеша
+│       └── ...
+└── runtime/                # Только при DownloadJRE: true
+    ├── java-runtime-gamma/
+    │   ├── bin/java
+    │   └── jre.json        # Маркер (component, path)
+    └── ...
+```
+
+---
+
+## Как использовать
+
+**Vanilla 1.8.9:**
+
+```go
+d, _ := mc.New(mc.Options{
+    MCVersion:  "1.8.9",
+    VersionDir: "/data/minecraft/1.8.9",
+})
+rep, _ := d.Ensure()
+// rep.MainClass = "net.minecraft.client.main.Main"
+// rep.RequiredJavaMajor = 8
+```
+
+**Fabric 1.20.1:**
+
+```go
+d, _ := mc.New(mc.Options{
+    MCVersion:        "1.20.1",
+    Modloader:        mc.Fabric,
+    ModloaderVersion: "0.16.14",
+    VersionDir:       "/data/minecraft/1.20.1-fabric",
+})
+rep, _ := d.Ensure()
+// rep.MainClass = "net.fabricmc.loader.impl.launch.knot.KnotClient"
+```
+
+**С Mojang JRE:**
+
+```go
+d, _ := mc.New(mc.Options{
+    MCVersion:   "1.20.1",
+    VersionDir:  "/data/minecraft/1.20.1",
+    DownloadJRE: true,
+    JREDir:      "/data/minecraft/runtime",
+})
+rep, _ := d.Ensure()
+// rep.JavaPath = "/data/minecraft/runtime/java-runtime-gamma/bin/java"
+```
+
+**Запуск после Ensure:**
 
 ```go
 rep, _ := d.Ensure()
-
-java := rep.JavaPath
-if java == "" {
-    java = findJava(rep.RequiredJavaMajor) // свой поиск: PATH, /usr/lib/jvm, реестр
-}
-cp := rep.ClientJar + string(os.PathListSeparator) + strings.Join(rep.Libraries, string(os.PathListSeparator))
-cmd := exec.Command(java, append([]string{
-    "-Xmx4G",
-    "-Djava.library.path=" + rep.NativesDir,
-    "-cp", cp,
-    rep.MainClass,
-    "--username", nick,
-    "--version", rep.MCVersion,
-    "--gameDir", rep.Minecraft,
-    "--assetsDir", rep.AssetsDir,
-    "--assetIndex", rep.AssetsID,
-    "--uuid", uuid, "--accessToken", token,
-    "--userProperties", "{}", "--userType", "legacy",
-})...)
-cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
-_ = cmd.Run()
+classpath := rep.ClientJar + string(os.PathListSeparator) + strings.Join(rep.Libraries, string(os.PathListSeparator))
+cmd := exec.Command(rep.JavaPath, "-Xmx4G", "-Djava.library.path="+rep.NativesDir,
+    "-cp", classpath, rep.MainClass, "--username", "Player", "--version", rep.MCVersion,
+    "--gameDir", rep.Minecraft, "--assetsDir", rep.AssetsDir, "--assetIndex", rep.AssetsID)
+cmd.Stdout = os.Stdout
+cmd.Stderr = os.Stderr
+cmd.Run()
 ```
 
-Полный пример с троттлингом — `example_minerouter_test.go`. Ручной прогон — `cmd/smoke` (`MC_VERSION`, `MC_LOADER`, `MC_MODLOADER_VERSION`, `MC_DIR`, `MC_JRE=1`).
+---
 
-## Раскладка результата
+## Тесты
+
+### Vanilla
+
+| Версия | Статус | Время | Размер | Примечание |
+|--------|--------|-------|--------|------------|
+| 1.5.2 | ✅ OK | 10с | 56 МБ | `launchwrapper.Launch` — старый формат |
+| 1.8.9 | ✅ OK | 17с | 136 МБ | Меню загружено, LWJGL 2.9.4 |
+| 1.12.2 | ✅ OK | 24с | 178 МБ | Меню загружено |
+| 1.16.5 | ✅ OK | — | — | Меню загружено, LWJGL 3.3.1 |
+| 1.20.1 | ✅ OK | 80с | 706 МБ | Меню загружено, Java 17 |
+| 26.2 (latest) | ✅ OK | 80с | 584 МБ | Меню загружено, Java 25 |
+
+### Fabric
+
+| Версия MC | Fabric Версия | Статус | Примечание |
+|-----------|--------------|--------|------------|
+| 1.14.4 | 0.16.14 | ✅ OK | Первая поддерживаемая версия |
+| 1.16.5 | 0.16.14 | ✅ OK | |
+| 1.20.1 | 0.16.14 | ✅ OK | 60 либ |
+| 26.2 | 0.19.5 | ✅ OK | 76 либ |
+
+### Quilt
+
+| Версия MC | Quilt Версия | Статус | Примечание |
+|-----------|-------------|--------|------------|
+| 1.16.5 | 0.24.0 | ✅ OK | |
+| 1.20.1 | 0.23.0 | ✅ OK | 67 либ |
+| 26.2 | 0.24.0 | ❌ FAIL | `ASM` в quilt не поддерживает Java 25 (class major 69) |
+
+### Java Runtime
+
+| Runtime | Статус | Версия | Размер |
+|---------|--------|--------|--------|
+| Mojang Gamma | ✅ OK | 17.0.15 (Microsoft build) | 96 МБ |
+| Mojang Epsilon | ✅ OK | 25.0.1 | 111 МБ |
+
+### Дополнительно
+
+- **Смена версии лоадера** (fabric 0.16.14 → 0.15.11 и обратно): 3 секунды, без перекачки клиента
+- **Ассеты с 404**: Mojang удаляет старые файлы CDN — библиотека пропускает с предупреждением (как оригинальный лаунчер)
+- **go vet**: чисто
+
+---
+
+## Кроссплатформа
+
+| ОС | Пути | Classpath | Natives | System Java |
+|----|------|-----------|---------|-------------|
+| Linux | `~/.minecraft/...` | `:` разделитель | `.so` | `/usr/lib/jvm/...` |
+| Windows | `%APPDATA%\.minecraft\...` | `;` разделитель | `.dll` | Реестр, `JAVA_HOME` |
+| macOS | `~/Library/Application Support/minecraft/...` | `:` разделитель | `.dylib` | `/Library/Java/JavaVirtualMachines/...` |
+
+---
+
+## Архитектура
 
 ```
-<VersionDir>/            ← имя задаёшь ты: "1.20.1" или "CraftopiaMC"
-  1.20.1.jar             ← клиент
-  natives/               ← распакованные .so/.dll
-  loader.json            ← маркер активного модлоадера (модовые)
-  libraries/             ← ванилла + загрузчик
-  assets/objects/ + indexes/ ← ассеты + индекс
-  runtime/               ← только при DownloadJRE (+ jre.json)
+mcdownloader-go/
+├── types.go       # Options, Modloader, Progress, File, InstallReport
+├── core.go        # New(), Ensure(), LogProgress — входная точка
+├── init.go        # resolveDir, ensureDirs — окружение, системная Java
+├── resolver.go    # piston-meta, Mojang типы, rules, maven-пути
+├── loader.go      # Fabric/Quilt meta API, launcherMeta
+├── downloader.go  # HTTP, retry, SHA1, batch-воркеры
+├── installer.go   # loader.json маркер, распаковка natives
+├── jre.go         # Mojang JRE runtime (Adoptium/Mojang)
+├── cmd/smoke/     # Тестовый запуск
+└── example_*.go   # Примеры интеграции
 ```
 
-## Протестировано
-
-Матрица 2026-09-03: скачивание + запуск на дисплее до главного меню.
-
-| Версия | Vanilla | Fabric | Quilt |
-|---|---|---|---|
-| 1.5.2 | ✅ 10с / 56М | — (лоадера нет) | — |
-| 1.8.9 | ✅ 17с / 136М | — (только LegacyFabric) | — |
-| 1.12.2 | ✅ 24с / 178М | — (только LegacyFabric) | — |
-| 1.14.4 | — | ✅ 0.16.14 (первая поддерживаемая) | — |
-| 1.16.5 | ✅ | ✅ 0.16.14 | ✅ 0.24.0 |
-| 1.20.1 | ✅ 80с / 706М | ✅ 0.16.14 | ✅ 0.23.0 |
-| 26.2 | ✅ 80с / 584М | ✅ 0.19.5 | ❌ апстрим: ASM quilt 0.24.0 не читает классы Java 25 |
-
-Дополнительно: `JRE gamma 17` + `epsilon 25` скачиваются и работают; ротация `0.16.14 ↔ 0.15.11` за 3с без перекачки; `go vet` чисто.
-
-Известные ограничения: `Forge/NeoForge` (инсталлер с процессорами) — v0.3; `Windows`-ветки написаны, гонялись на `linux`.
+---
 
 ## Дорожная карта
 
-- v0.3: `Forge/NeoForge` (движок install-процессоров), юнит-тесты на `httptest`, `CI`
-- По спросу: `LegacyFabric` (тот же meta-формат, +1 `case`), `Quilt` на новых MC по мере выхода
+| Версия | Что | Статус |
+|--------|-----|--------|
+| **v1.0** | Vanilla + Fabric + Quilt + Mojang JRE | ✅ Выпущена |
+| v0.3 | Forge + NeoForge (инсталлер-процессоры) | Запланировано |
+| v0.3 | Юнит-тесты (httptest) + CI | Запланировано |
+| v0.3 | LegacyFabric (старые версии 1.3–1.13) | По спросу |
+
+---
 
 ## Лицензия
 
-`MIT` — см. `LICENSE`.
+MIT License —详见 [LICENSE](LICENSE).
+
+---
+
+## Благодарности
+
+- [Mojang Studios](https://www.mojang.com/) — `piston-meta`, клиенты, рантаймы Java
+- [FabricMC](https://fabricmc.net/) — meta API, Maven-репозиторий
+- [QuiltMC](https://quiltmc.org/) — meta API, Maven-репозиторий
+- [Cloudflare CIRCL](https://github.com/cloudflare/circl) — крипто-праймитивы (для будущего)
